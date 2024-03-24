@@ -8,7 +8,11 @@ CREATE TABLE customers (
   password VARCHAR(100)
 );
 
-insert into customers (name, customerid, password) values ('drew', UUID(), 'TOPSECRET');
+insert into customers (name, customerid, password) values ('drew', UUID(), 'TOPSECRET1');
+insert into customers (name, customerid, password) values ('kristen', UUID(), 'TOPSECRET2');
+insert into customers (name, customerid, password) values ('hal', UUID(), 'TOPSECRET3');
+insert into customers (name, customerid, password) values ('evan', UUID(), 'TOPSECRET4');
+insert into customers (name, customerid, password) values ('nathan', UUID(), 'TOPSECRET5');
 
 CREATE TABLE sources (
   sourcename VARCHAR(1) NOT NULL PRIMARY KEY,

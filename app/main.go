@@ -7,8 +7,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/google/uuid"
 	"github.com/srinathgs/mysqlstore"
 )
 
@@ -24,6 +26,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
 	defer db.Close()
 	db.SetMaxOpenConns(10)
 	db.SetMaxIdleConns(10)
@@ -51,8 +54,163 @@ func main() {
 
 	http.HandleFunc("/sources", env.getSources)
 	http.HandleFunc("/participantdetails", env.getParticipantDetails)
+	http.HandleFunc("/submitdeferral", env.submitDeferral)
 	http.HandleFunc("/auth", env.auth)
 	http.ListenAndServe(":8080", nil)
+
+}
+
+/*
+Shallow implementation.  Not going to bother inactivating old deferrals.
+Demonstration purposes only :)
+*/
+func (env *Env) submitDeferral(w http.ResponseWriter, r *http.Request) {
+	var submitDeferralRequest SubmitDeferralRequest
+
+	err := json.NewDecoder(r.Body).Decode(&submitDeferralRequest)
+	//In a real application, we would probably want to build something to
+	//handle errors in a more hollistic way.
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
+		env.logger.Println(err)
+		return
+	}
+	env.logger.Printf("SubmitDeferralRequest for %s for External Plan ID %s\n",
+		submitDeferralRequest.Username, submitDeferralRequest.ExternalPlanId)
+
+	enrollmentID, err := env.createEnrollments(submitDeferralRequest)
+
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
+		env.logger.Println(err)
+		return
+	}
+
+	err = env.createDeferrals(submitDeferralRequest, enrollmentID)
+
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
+		env.logger.Println(err)
+		return
+	}
+
+	env.logger.Printf("Deferral successfully submitted for %s for External Plan ID %s\n",
+		submitDeferralRequest.Username, submitDeferralRequest.ExternalPlanId)
+	w.Write([]byte("Submitted"))
+}
+
+func (env *Env) getCustomerId(username string) (string, error) {
+
+	rows, err := env.db.Query("select customerid from customers where name = '" + username + "'")
+	if err != nil {
+		return "Error retriving customerid", err
+	}
+	defer rows.Close()
+	var customerid string
+	for rows.Next() {
+		err := rows.Scan(&customerid)
+		if err != nil {
+			return "Error retriving customerid", err
+		}
+	}
+
+	return customerid, err
+
+}
+
+func (env *Env) getPlanId(externalid string) (string, error) {
+
+	rows, err := env.db.Query("select planid from plans where externalid = '" + externalid + "'")
+	if err != nil {
+		return "Error retriving planid", err
+	}
+	defer rows.Close()
+	var planid string
+	for rows.Next() {
+		err := rows.Scan(&planid)
+		if err != nil {
+			return "Error retriving planid", err
+		}
+	}
+
+	return planid, err
+
+}
+
+func (env *Env) createDeferrals(sdr SubmitDeferralRequest, enrollmentID string) error {
+	var err error
+
+	for _, deferral := range sdr.DeferralRequest {
+		id := uuid.New()
+		//in real life use string builders please :)
+		//lazy mode for demo :)
+		sql := "insert into deferrals "
+		sql += "(deferralid, sourcename, deductamount, createtime, enrollmentid) "
+		sql += "values ("
+		sql += "'" + id.String() + "', "
+		sql += "'" + deferral.Source + "', "
+		sql += "'" + strconv.Itoa(deferral.DeductAmount) + "', "
+		sql += "NOW(), "
+		sql += "'" + enrollmentID + "'"
+		sql += ")"
+
+		result, err := env.db.Exec(sql)
+		if err != nil {
+			return err
+		}
+		updated, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+
+		env.logger.Printf("Inserted %d rows into enrollments table", updated)
+	}
+
+	return err
+
+}
+func (env *Env) createEnrollments(sdr SubmitDeferralRequest) (string, error) {
+
+	customerid, err := env.getCustomerId(sdr.Username)
+	if err != nil {
+		return "Error fetching customerid", err
+	}
+
+	planid, err := env.getPlanId(sdr.ExternalPlanId)
+	if err != nil {
+		return "Error fetching plan", err
+	}
+
+	id := uuid.New()
+
+	//in real life use string builders please :)
+	//lazy mode for demo :)
+	sql := "insert into enrollments "
+	sql += "(enrollmentid, deductionmethod, planid, status, createtime, customerid) "
+	sql += "values ("
+	sql += "'" + id.String() + "', "
+	sql += "'" + strconv.Itoa(sdr.DeductMethod) + "', "
+	sql += "'" + planid + "', "
+	sql += "'ACTIVE', "
+	sql += "NOW(), "
+	sql += "'" + customerid + "'"
+	sql += ")"
+
+	result, err := env.db.Exec(sql)
+	if err != nil {
+		return "Error inserting enrollment", err
+	}
+	updated, err := result.RowsAffected()
+	if err != nil {
+		return "Error fetching update counts", err
+	}
+
+	env.logger.Printf("Inserted %d rows into enrollments table", updated)
+
+	return id.String(), err
 
 }
 

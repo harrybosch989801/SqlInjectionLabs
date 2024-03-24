@@ -10,23 +10,41 @@ type ParticipantDetailRequest struct {
 	ExternalId string `json:"externalid"`
 }
 
+type SubmitDeferralRequest struct {
+	Username        string            `json:"username"`
+	ExternalPlanId  string            `json:"planid"`
+	DeductMethod    int               `json:"deductmethod"`
+	DeferralRequest []DeferralRequest `json:"deferral"`
+}
+
 type Source struct {
-	SourceName string
-	SourceType string
+	SourceName string `json:"source"`
+	SourceType string `json:"sourcetype"`
 }
 
 type Plan struct {
-	ExternalPlanId string
-	PlanName       string
+	ExternalPlanId string `json:"planid"`
+	PlanName       string `json:"planname"`
+}
+
+type DeferralRequest struct {
+	Source         string `json:"source"`
+	ExternalPlanId string `json:"planid"`
+	DeductAmount   int    `json:"deductamount"`
+}
+
+type Customer struct {
+	Name       string
+	Customerid string
+	Password   string
 }
 
 type Deferral struct {
-	Source       Source
-	Plan         Plan
-	DeductAmount int
-	DeductMethod int
+	Source       Source `json:"source"`
+	Plan         Plan   `json:"planid"`
+	DeductAmount int    `json:"deductamount"`
+	DeductMethod int    `json:"deductmethod"`
 }
-
 type ParticipantPlanDetailResponse struct {
 	ExternalPlanId string
 	PlanName       string

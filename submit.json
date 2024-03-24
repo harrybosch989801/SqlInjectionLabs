@@ -1,0 +1,15 @@
+{
+  "username":"drew",
+  "deductmethod": 1,
+  "planid": "565657",
+  "deferral": [
+    {
+      "source": "E",
+      "deductamount": 250
+    },
+    {
+      "source": "2",
+      "deductamount": 50
+    }
+  ]
+}
