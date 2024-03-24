@@ -166,7 +166,7 @@ func (env *Env) createDeferrals(sdr SubmitDeferralRequest, enrollmentID string) 
 			return err
 		}
 
-		env.logger.Printf("Inserted %d rows into enrollments table", updated)
+		env.logger.Printf("Inserted %d rows into deferrals table", updated)
 	}
 
 	return err
