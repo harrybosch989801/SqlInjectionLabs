@@ -28,8 +28,8 @@ func main() {
 	}
 
 	defer db.Close()
-	db.SetMaxOpenConns(10)
-	db.SetMaxIdleConns(10)
+	db.SetMaxOpenConns(1000)
+	db.SetMaxIdleConns(1000)
 
 	//set up logging
 	file, err := os.Create("console.log")
@@ -226,11 +226,11 @@ func (env *Env) getParticipantDetails(w http.ResponseWriter, r *http.Request) {
 	}
 	env.logger.Printf("Participant Detail Request for %s for External Plan ID %s\n", participantDetailRequest.Username, participantDetailRequest.ExternalId)
 
-	sql := "select p.externalid, s.sourcename, s.sourcetype, p.planname, d.deductamount, e.deductmethod from enrollments e "
-	sql += "join customer c on c.customerid = e.customerid "
+	sql := "select p.externalid, s.sourcename, s.sourcetype, p.planname, d.deductamount, e.deductionmethod from enrollments e "
+	sql += "join customers c on c.customerid = e.customerid "
 	sql += "join deferrals d on d.enrollmentid = e.enrollmentid "
 	sql += "join sources s on s.sourcename = d.sourcename "
-	sql += "join plans p on p.planid = e.planid"
+	sql += "join plans p on p.planid = e.planid "
 	sql += "where c.name = '" + participantDetailRequest.Username + "' "
 	if participantDetailRequest.ExternalId != "" {
 		sql += " and p.externalid = '" + participantDetailRequest.ExternalId + "'"
@@ -285,6 +285,7 @@ func (env *Env) auth(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)
 		w.Write([]byte(err.Error()))
 		env.logger.Println(err)
+		return
 	}
 	env.logger.Printf("Username is %s\n", authRequest.Username)
 
@@ -292,7 +293,10 @@ func (env *Env) auth(w http.ResponseWriter, r *http.Request) {
 	sql := "select 1 from customers where name = '" + authRequest.Username + "' and password ='" + authRequest.Password + "'"
 	rows, err := env.db.Query(sql)
 	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
 		env.logger.Println(err)
+		return
 	}
 	defer rows.Close()
 
@@ -306,9 +310,10 @@ func (env *Env) auth(w http.ResponseWriter, r *http.Request) {
 	if authenticated {
 		w.Write([]byte("You have authenticated successfully!"))
 	} else {
+		w.WriteHeader(500)
 		w.Write([]byte("Invalid user/password"))
 		env.logger.Printf("Invalid login attempt.  User: %s  Pass: %s", authRequest.Username, authRequest.Password)
-
+		return
 	}
 
 }
