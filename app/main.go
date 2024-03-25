@@ -56,6 +56,7 @@ func main() {
 	http.HandleFunc("/participantdetails", env.getParticipantDetails)
 	http.HandleFunc("/submitdeferral", env.submitDeferral)
 	http.HandleFunc("/auth", env.auth)
+	http.HandleFunc("/plan", env.getPlan)
 	http.ListenAndServe(":8080", nil)
 
 }
@@ -316,6 +317,44 @@ func (env *Env) auth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+}
+
+func (env *Env) getPlan(w http.ResponseWriter, r *http.Request) {
+	var planRequest PlanRequest
+	err := json.NewDecoder(r.Body).Decode(&planRequest)
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
+		env.logger.Println(err)
+		return
+	}
+	sql := "select planname, externalid from plans "
+	sql += "where externalid = '" + planRequest.ExternalPlanId + "'"
+
+	rows, err := env.db.Query(sql)
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
+		env.logger.Println(err)
+		return
+	}
+	defer rows.Close()
+	var planname string
+	var externalid string
+	var p Plan
+	for rows.Next() {
+		err = rows.Scan(&planname, &externalid)
+		if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte(err.Error()))
+			env.logger.Println(err)
+			return
+		}
+		p = Plan{ExternalPlanId: externalid, PlanName: planname}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(p)
 }
 
 func (env *Env) getSources(w http.ResponseWriter, r *http.Request) {

@@ -22,6 +22,10 @@ type Source struct {
 	SourceType string `json:"sourcetype"`
 }
 
+type PlanRequest struct {
+	ExternalPlanId string `json:"planid"`
+}
+
 type Plan struct {
 	ExternalPlanId string `json:"planid"`
 	PlanName       string `json:"planname"`
