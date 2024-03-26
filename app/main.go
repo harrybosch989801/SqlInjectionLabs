@@ -329,9 +329,9 @@ func (env *Env) getPlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sql := "select planname, externalid from plans "
-	sql += "where externalid = '" + planRequest.ExternalPlanId + "'"
+	sql += "where externalid = ?"
 
-	rows, err := env.db.Query(sql)
+	rows, err := env.db.Query(sql, planRequest.ExternalPlanId)
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte(err.Error()))
@@ -353,8 +353,12 @@ func (env *Env) getPlan(w http.ResponseWriter, r *http.Request) {
 		p = Plan{ExternalPlanId: externalid, PlanName: planname}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(p)
+	if p.PlanName == "" {
+		w.Write([]byte("Plan Not Found\n"))
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(p)
+	}
 }
 
 func (env *Env) getSources(w http.ResponseWriter, r *http.Request) {
