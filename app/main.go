@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
@@ -319,6 +320,22 @@ func (env *Env) auth(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func hackCheck(s string) bool {
+
+	BANNED_WORDS := []string{"AND", "OR"}
+
+	checkme := strings.ToUpper(s)
+	for _, word := range BANNED_WORDS {
+		if strings.Contains(checkme, word) {
+			return true
+		}
+
+	}
+
+	return false
+
+}
+
 func (env *Env) getPlan(w http.ResponseWriter, r *http.Request) {
 	var planRequest PlanRequest
 	err := json.NewDecoder(r.Body).Decode(&planRequest)
@@ -326,6 +343,13 @@ func (env *Env) getPlan(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)
 		w.Write([]byte(err.Error()))
 		env.logger.Println(err)
+		return
+	}
+	if hackCheck(planRequest.ExternalPlanId) {
+
+		w.WriteHeader(500)
+		w.Write([]byte("Don't bring that weak injection attack here.  I know about OR 1=1!\n"))
+		env.logger.Println("HACKING ATTEMPT DETECTED!!!!")
 		return
 	}
 	sql := "select planname, externalid from plans "
